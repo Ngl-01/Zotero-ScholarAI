@@ -1,0 +1,34 @@
+zotero_path = "XXXXXX" 
+
+[embedding]
+model = "dengcao/Qwen3-Embedding-0.6B:F16"
+tokenizer = "Qwen/Qwen3-Embedding-0.6B"
+base_url = "XXXXXX"
+api_key = "ollama"
+
+[chat]
+model = "deepseek-ai/DeepSeek-V3"
+base_url = "https://api.siliconflow.cn/v1"
+api_key = "sk-XXXXXX"
+
+[prompt]
+enhance = """用户发出了查询请求：
+{query}
+
+现在你需要从向量数据库中检索相关内容来回应用户的查询请求。为了获得更好的结果，请你根据用户请求生成至多10条句子用来检索向量数据库
+- 你的回复必须只包含一个json代码块
+- json代码满足类型 string[]
+- 不要包含代码块以外的其他内容
+- 这些句子可以是问题也可以是可能的回答"""
+ask = """用户提问：
+{query}
+
+根据用户提问，在知识库中检索到内容：
+```json
+{knowledge}
+```
+
+请根据这些内容回答用户的问题
+- 使用 [@key]() 的链接形式来引用知识库中的内容
+- 如果知识库中不包含有价值内容，需要告知用户
+"""
