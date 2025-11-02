@@ -96,7 +96,6 @@ api_key = "你的API密钥"
 ```bash
 python main.py
 ```
-
 后端将在 `http://localhost:8000` 启动。
 
 ### 前端安装

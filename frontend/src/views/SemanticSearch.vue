@@ -39,7 +39,7 @@ async function doSearch() {
     results.value = data.map(item => ({ ...item, title: '正在获取……', publication: '正在获取……', pdf_key: '' }))
 
     // For each item, fetch details asynchronously and merge into results
-    for (const [i, item] of data.entries()) {
+    data.forEach((item, i) => {
       fetch(`/api/item/${encodeURIComponent(item.key)}`)
         .then(async r => {
           if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
@@ -56,7 +56,7 @@ async function doSearch() {
         .catch(() => {
           // If error, leave fields blank
         })
-    }
+    })
   } catch (err: any) {
     error.value = err?.message ?? String(err)
   } finally {
@@ -88,34 +88,336 @@ const openExportPath = () => {
 </script>
 
 <template>
-  <h2>语义搜索</h2>
-  <p style="display: flex; gap: 0.5em;">
-    <input v-model="query" @keypress.enter="doSearch" style="width:400px;" />
-    <span>最多</span>
-    <input type="number" v-model.number="n_results" min="1" max="200" style="width: 3em; text-align: right;" />
-    <span>个结果</span>
-    <button type="button" @click="doSearch" :disabled="loading">搜索</button>
-    <button type="button" @click="exportAll">导出全部</button>
-    <button type="button" @click="openExportPath">打开目录</button>
-  </p>
-  <p v-if="loading">搜索中…</p>
-  <p v-else-if="error">错误：{{ error }}</p>
-  <div v-else>
-    <p v-if="results.length === 0">未找到结果</p>
-    <div v-for="item in results" :key="item.key">
-      <h3>{{ item.title || '无标题' }}</h3>
-      <p>
-        <span v-if="item.publication">{{ item.publication }}</span>
-        <span style="margin-left: 0.5em;">距离: {{ item.distance.toFixed(3) }}</span>
-      </p>
-      <p style="font-size: 0.6em;">{{ item.document }}</p>
-      <p style="display: flex; gap: 0.5em;">
-        <a :href="`zotero://select/library/items/${encodeURIComponent(item.key)}`">查看</a>
-        <a v-if="item.pdf_key" href="###" @click.prevent="openItem(item.pdf_key)">打开PDF</a>
-        <a v-if="item.pdf_key" href="###" @click.prevent="exportItem(item.pdf_key)">导出PDF</a>
-      </p>
+  <div class="search-container">
+    <h2>🔍 语义搜索</h2>
+    <p class="page-desc">基于 AI 向量嵌入的智能语义检索</p>
+
+    <div class="search-bar">
+      <input 
+        v-model="query" 
+        @keypress.enter="doSearch" 
+        class="search-input" 
+        placeholder="输入您要搜索的内容..." 
+      />
+      <div class="search-options">
+        <label class="result-count">
+          <span>最多显示</span>
+          <input type="number" v-model.number="n_results" min="1" max="200" class="number-input" />
+          <span>条结果</span>
+        </label>
+        <button type="button" @click="doSearch" :disabled="loading" class="btn-primary">
+          🔍 搜索
+        </button>
+        <button type="button" @click="exportAll" class="btn-secondary">
+          📥 导出全部
+        </button>
+        <button type="button" @click="openExportPath" class="btn-secondary">
+          📂 打开目录
+        </button>
+      </div>
+    </div>
+
+    <div v-if="loading" class="status-message loading">
+      <div class="spinner"></div>
+      <span>搜索中，请稍候...</span>
+    </div>
+    <div v-else-if="error" class="status-message error">
+      ❌ 错误：{{ error }}
+    </div>
+    <div v-else class="results-section">
+      <div v-if="results.length === 0" class="no-results">
+        <div class="no-results-icon">🔍</div>
+        <p>未找到相关结果，请尝试其他关键词</p>
+      </div>
+      <div v-else class="results-list">
+        <div class="results-header">
+          <span>找到 <strong>{{ results.length }}</strong> 条相关结果</span>
+        </div>
+        <div v-for="(item, index) in results" :key="item.key" class="result-card">
+          <div class="result-index">{{ index + 1 }}</div>
+          <div class="result-content">
+            <h3 class="result-title">{{ item.title || '无标题' }}</h3>
+            <div class="result-meta">
+              <span v-if="item.publication" class="publication">📖 {{ item.publication }}</span>
+              <span class="distance">相似度: {{ (1 - item.distance).toFixed(3) }}</span>
+            </div>
+            <p class="result-excerpt">{{ item.document }}</p>
+            <div class="result-actions">
+              <a :href="`zotero://select/library/items/${encodeURIComponent(item.key)}`" class="action-link">
+                👁️ 在 Zotero 中查看
+              </a>
+              <a v-if="item.pdf_key" href="###" @click.prevent="openItem(item.pdf_key)" class="action-link">
+                📄 打开 PDF
+              </a>
+              <a v-if="item.pdf_key" href="###" @click.prevent="exportItem(item.pdf_key)" class="action-link">
+                💾 导出 PDF
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<style></style>
+<style scoped>
+.search-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.page-desc {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 16px;
+}
+
+.search-bar {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 15px 20px;
+  font-size: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.search-options {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.result-count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+.number-input {
+  width: 60px;
+  text-align: center;
+  padding: 8px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.btn-secondary:hover {
+  background: #667eea;
+  color: white;
+}
+
+.status-message {
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.status-message.loading {
+  background: #fff3cd;
+  color: #856404;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.status-message.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.no-results {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.no-results-icon {
+  font-size: 64px;
+  margin-bottom: 15px;
+  opacity: 0.5;
+}
+
+.no-results p {
+  color: #666;
+  font-size: 16px;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.results-header {
+  padding: 15px 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-radius: 10px;
+  color: #667eea;
+  font-weight: 500;
+}
+
+.result-card {
+  display: flex;
+  gap: 20px;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.result-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.result-index {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.result-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-title {
+  color: #333;
+  font-size: 20px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.result-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.publication {
+  color: #666;
+  font-size: 14px;
+}
+
+.distance {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.result-excerpt {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.8;
+  margin-bottom: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.result-actions {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.action-link {
+  color: #667eea;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(102, 126, 234, 0.1);
+  transition: all 0.3s ease;
+}
+
+.action-link:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+</style>
