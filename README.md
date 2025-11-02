@@ -61,7 +61,7 @@ cd "Zotero ScholarAI/backend"
 
 2. **安装依赖**
 
-推荐使用 `uv` 或 `pip`：
+推荐使用 `uv` 或 `pip`（强烈推荐使用uv）：
 
 ```bash
 # 使用 uv
@@ -76,7 +76,7 @@ pip install -e .
 复制 `_config.toml` 为 `config.toml` 并修改配置：
 
 ```toml
-zotero_path = "你的Zotero数据路径"
+zotero_path = "你的Zotero文献路径"
 static_path = "../frontend/dist"
 
 [embedding]
